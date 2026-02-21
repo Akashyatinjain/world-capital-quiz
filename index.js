@@ -40,7 +40,7 @@ app.get("/", async (req, res) => {
   totalCorrect = 0;
   await nextQuestion();
   console.log(currentQuestion);
-  res.render("index.ejs", { question: currentQuestion });
+  res.render("index.html", { question: currentQuestion });
 });
 
 // POST a new post
@@ -54,7 +54,7 @@ app.post("/submit", (req, res) => {
   }
 
   nextQuestion();
-  res.render("index.ejs", {
+  res.render("index.html", {
     question: currentQuestion,
     wasCorrect: isCorrect,
     totalScore: totalCorrect,
