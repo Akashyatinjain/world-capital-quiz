@@ -1,72 +1,87 @@
 import express from "express";
 import bodyParser from "body-parser";
 import pg from "pg";
+import cors from "cors";
 
 const app = express();
 const port = 3000;
 
+app.use(cors());
+app.use(bodyParser.json()); // React sends JSON
+
+// Database
 const db = new pg.Client({
-  user:"postgres",
-  password:"akashjain042006",
-  host:"localhost",
-  database:"world",
-  port:5432
+  user: "postgres",
+  password: "akashjain042006",
+  host: "localhost",
+  database: "world",
+  port: 5432,
 });
 
-db.connect();
+await db.connect();
 
-
+// Quiz data
 let quiz = [];
-
-db.query("SELECT * FROM country",(err,res)=>{
-if(err){
-  console.error("there is an error",err.stack);
-}else{
-  quiz=res.rows;
-}
-db.end();
-})
-
 let totalCorrect = 0;
-
-// Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static("public"));
-
 let currentQuestion = {};
 
-// GET home page
-app.get("/", async (req, res) => {
+// Load countries from DB
+async function loadQuiz() {
+  try {
+    const result = await db.query("SELECT * FROM country");
+    quiz = result.rows;
+  } catch (err) {
+    console.error("Database error:", err);
+  }
+}
+
+await loadQuiz();
+
+// Get next question
+function nextQuestion() {
+  const randomCountry =
+    quiz[Math.floor(Math.random() * quiz.length)];
+
+  currentQuestion = randomCountry;
+}
+
+// =======================
+// API ROUTES
+// =======================
+
+// GET question
+app.get("/api/question", (req, res) => {
   totalCorrect = 0;
-  await nextQuestion();
-  console.log(currentQuestion);
-  res.render("index.html", { question: currentQuestion });
+  nextQuestion();
+
+  res.json({
+    question: currentQuestion,
+    totalScore: totalCorrect,
+  });
 });
 
-// POST a new post
-app.post("/submit", (req, res) => {
-  let answer = req.body.answer.trim();
+// POST answer
+app.post("/api/submit", (req, res) => {
+  const answer = req.body.answer?.trim() || "";
   let isCorrect = false;
-  if (currentQuestion.capital.toLowerCase() === answer.toLowerCase()) {
+
+  if (
+    currentQuestion.capital.toLowerCase() ===
+    answer.toLowerCase()
+  ) {
     totalCorrect++;
-    console.log(totalCorrect);
     isCorrect = true;
   }
 
   nextQuestion();
-  res.render("index.html", {
+
+  res.json({
     question: currentQuestion,
     wasCorrect: isCorrect,
     totalScore: totalCorrect,
   });
 });
 
-async function nextQuestion() {
-  const randomCountry = quiz[Math.floor(Math.random() * quiz.length)];
-
-  currentQuestion = randomCountry;
-}
-
 app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
